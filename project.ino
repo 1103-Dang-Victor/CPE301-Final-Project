@@ -1,4 +1,4 @@
-// Code Contributors: Victor Dang, Anthony Felix
+// Code Contributors: Victor Dang, Anthony Felix, Jordan Imgard
 // CPE 301 Group 13
 
 #include <LiquidCrystal.h>
