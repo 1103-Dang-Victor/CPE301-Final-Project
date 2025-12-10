@@ -59,6 +59,9 @@ volatile unsigned int  *my_ADC_DATA = (unsigned int *)0x78;
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
+#define BTN_LEFT  0b00010000
+#define BTN_RIGHT 0b00100000
+
 //RTC
 RTC_DS1307 rtc; 
 
@@ -127,7 +130,10 @@ void setup()
         to turn led ON in other functions: *port_b |= 0b00010000;
         OFF: *port_b &= 0b11101111;
     */
-
+	*ddr_k &= ~(BTN_LEFT);
+	*ddr_k &= ~(BTN_RIGHT);
+	*port_k |= BTN_LEFT;   // enable pull-up
+	*port_k |= BTN_RIGHT;  // enable pull-up
     // Start the UART
     U0Init(9600);
 }
@@ -177,7 +183,7 @@ void loop()
             lcd.setCursor(0, 1);
             lcd.print("Error State");
            	if (adc_read(0) > WATER_THRESHOLD) {
-    			lcd.print("Level OK Press Buttonn"); 
+    			lcd.print("Level OK Press Button"); 
 			} else {
     			lcd.print("Error State");
 			}
@@ -232,6 +238,10 @@ void monitorEnvironment() {
         lcd.print("Temp: "); lcd.print(t); lcd.print("C");
         lcd.setCursor(0, 1);
         lcd.print("Humid: "); lcd.print(h); lcd.print("%");
+		if (h > 70.0) {  
+   			lcd.setCursor(0, 1); // overwrite the humidity line
+    		lcd.print("High Humidity!");
+		}
     }
 }
 
@@ -243,10 +253,14 @@ void checkWaterLevel() {
 }
 
 void controlVent() {
-    if (*pin_d & 0b00001000) { 
+    if ((*pin_k & BTN_LEFT) == 0) {  
+        myStepper.step(-10);
+        return;
+    }
+    if ((*pin_k & BTN_RIGHT) == 0) {  
         myStepper.step(10);
-    } 
-    //Add logic for the other direction if needed
+        return;
+    }
 }
 
 void startISR() {
