@@ -1,4 +1,4 @@
-// Code Contributors: Victor Dang, Anthony Felix, Jordan Imgard
+// Code Contributors: Victor Dang, Gianna Everest, Anthony Felix, Jordan Imgard
 // CPE 301 Group 13
 
 #include <LiquidCrystal.h>
@@ -97,45 +97,43 @@ void U0Init(unsigned long U0baud);
 void U0putstr(const char *string);
 unsigned int adc_read(unsigned char adc_channel_num);
 void adc_init();
+void updateLEDs();
+void transitionTo(State nextState);
+void monitorEnvironment();
+void checkWaterLevel();
+void controlVent();
+void startISR();
 
 //setup all required functions, timers, lcd, motors, etc.
 void setup() 
 {
 
-    //setup the LEDs required, red, green, blue, yellow
-    //RED LED OUTPUT PH6 -> PIN 9
-    *ddr_h |= 0b01000000;
-    /*
-        to turn led ON in other functions: *port_h |= 0b01000000;
-        OFF: *port_h &= 0b10111111;
-    */
+    //1. Setup LEDs (Output)
+    *ddr_h |= 0b01110000; //Red, Yellow, Green
+    *ddr_b |= 0b00010000; //Blue
 
-    //YELLOW LED OUTPUT PH5 -> PIN 8
-    *ddr_h |= 0b00100000;
-    /*
-        to turn led ON in other functions: *port_h |= 0b00100000;
-        OFF: *port_h &= 0b11011111;
-    */
+    //2. Setup Vent Buttons (Port K)
+    *ddr_k &= ~(BTN_LEFT);
+    *ddr_k &= ~(BTN_RIGHT);
+    *port_k |= BTN_LEFT;   //enable pull-up
+    *port_k |= BTN_RIGHT;  //enable pull-up
 
-    //GREEN LED OUTPUT PH4 -> PIN 7
-    *ddr_h |= 0b00010000;
-    /*
-        to turn led ON in other functions: *port_h |= 0b00010000;
-        OFF: *port_h &= 0b11101111;
-    */
+    //3. Setup Start Button (Port D, Pin 19 is PD2), we must ensure PD2 is input and pulled up
+    *ddr_d &= 0b11111011;  //Force Bit 2 to Input
+    *port_d |= 0b00000100; //Force Bit 2 Pull-up
 
-    //BLUE LED PB4 -> PIN 10
-    *ddr_b |= 0b00010000;
-    /*
-        to turn led ON in other functions: *port_b |= 0b00010000;
-        OFF: *port_b &= 0b11101111;
-    */
-	*ddr_k &= ~(BTN_LEFT);
-	*ddr_k &= ~(BTN_RIGHT);
-	*port_k |= BTN_LEFT;   // enable pull-up
-	*port_k |= BTN_RIGHT;  // enable pull-up
-    // Start the UART
+    //4. Initialize Peripherals (CRITICAL MISSING STEP FIXED HERE)
     U0Init(9600);
+    adc_init();
+    dht.begin();
+    lcd.begin(16, 2);
+    rtc.begin();
+    
+    //5. Attach Interrupt (CRITICAL MISSING STEP FIXED HERE)
+    attachInterrupt(digitalPinToInterrupt(19), startISR, FALLING);
+
+    //Initial State
+    updateLEDs();
 }
 
 //change if needed
@@ -183,7 +181,7 @@ void loop()
             lcd.setCursor(0, 1);
             lcd.print("Error State");
            	if (adc_read(0) > WATER_THRESHOLD) {
-    			lcd.print("Level OK Press Button"); 
+    			lcd.print("Level OK-Press Btn"); 
 			} else {
     			lcd.print("Error State");
 			}
@@ -237,11 +235,11 @@ void monitorEnvironment() {
         lcd.setCursor(0, 0);
         lcd.print("Temp: "); lcd.print(t); lcd.print("C");
         lcd.setCursor(0, 1);
-        lcd.print("Humid: "); lcd.print(h); lcd.print("%");
-		if (h > 70.0) {  
-   			lcd.setCursor(0, 1); // overwrite the humidity line
-    		lcd.print("High Humidity!");
-		}
+        if (h > 70.0) {  
+             lcd.print("High Humidity!  ");
+        } else {
+             lcd.print("Humid: "); lcd.print(h); lcd.print("%  "); 
+        }
     }
 }
 
