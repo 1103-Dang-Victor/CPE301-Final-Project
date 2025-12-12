@@ -1,6 +1,19 @@
 // Code Contributors: Victor Dang, Gianna Everest, Anthony Felix, Jordan Imgard
 // CPE 301 Group 13
 
+// LCD Screen: Pins 22, 23, 24, 25, 26, 27
+// Stepper Motor: Pins 2, 3, 4, 5
+// Green LED: Pin 7 (PH4)
+// Yellow LED: Pin 8 (PH5)
+// Red LED: Pin 9 (PH6)
+// Blue LED (Fan): Pin 10 (PB4)
+// DHT11 Sensor: Pin 6
+// Water Sensor: Pin A0
+// Start Button: Pin 19 (PD2 - Interrupt)
+// Vent Button Left: Pin A12 (PK4)
+// Vent Button Right: Pin A13 (PK5)
+// RTC: Pins 20 (SDA), 21 (SCL)
+
 #include <LiquidCrystal.h>
 #include <Stepper.h>
 #include <DHT.h>
@@ -29,7 +42,6 @@ volatile unsigned char *ddr_k  = (unsigned char *)0x107;
 volatile unsigned char *pin_k  = (unsigned char *)0x106;
 
 //Timer Pointers
-//Since this is in the document, "For the 1-minute delay, you are allowed to use the millis() function", these pointers may be unnecessary 
 volatile unsigned char *myTCCR1A  = (unsigned char *)0x80;
 volatile unsigned char *myTCCR1B  = (unsigned char *)0x81;
 volatile unsigned char *myTCCR1C  = (unsigned char *)0x82;
@@ -92,7 +104,7 @@ volatile unsigned long last_isr_time = 0;
 //ISR Flag
 volatile bool start_request = false;
 
-//Function Prototypes (Good practice to avoid scope errors)
+//Function Prototypes
 void U0Init(unsigned long U0baud);
 void U0putstr(const char *string);
 unsigned int adc_read(unsigned char adc_channel_num);
@@ -122,21 +134,20 @@ void setup()
     *ddr_d &= 0b11111011;  //Force Bit 2 to Input
     *port_d |= 0b00000100; //Force Bit 2 Pull-up
 
-    //4. Initialize Peripherals (CRITICAL MISSING STEP FIXED HERE)
+    //4. Initialize Peripherals
     U0Init(9600);
     adc_init();
     dht.begin();
     lcd.begin(16, 2);
     rtc.begin();
     
-    //5. Attach Interrupt (CRITICAL MISSING STEP FIXED HERE)
+    //5. Attach Interrupts
     attachInterrupt(digitalPinToInterrupt(19), startISR, FALLING);
 
     //Initial State
     updateLEDs();
 }
 
-//change if needed
 void loop()
 {
 	//Handle State Transitions and Logic
